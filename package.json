@@ -8,7 +8,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "start": "node src/server.js",
     "auth:verify": "node src/scripts/verifyAuth.js",
     "db:sync": "node src/db/db.js"
@@ -16,6 +17,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "devDependencies": {
+    "supertest": "^7.0.0",
+    "vitest": "^2.1.0"
+  },
   "dependencies": {
     "axios": "^1.15.2",
     "dotenv": "^17.4.2",
