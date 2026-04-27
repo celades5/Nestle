@@ -56,8 +56,11 @@ Together they give **identity, merchandising, commercial, quality, and availabil
 ## Useful HTTP examples (port 3000 by default)
 
 - `GET /products` — all products
-- `GET /products?reviewed=false` — not yet reviewed
+- `GET /products?reviewed=false`
 - `POST /productreviewed/{id}` — mark reviewed + **publish to Kafka** (requires broker reachable via `KAFKA_BROKERS`)
+
+It has been decided to return a 409 in case a product was already reviewed. It would return
+a conflict message instead of an error or a success (since is neither of those things).
 
 ---
 
