@@ -7,9 +7,44 @@ const PORT = Number(process.env.PORT) || 3000;
 const app = express();
 app.use(express.json());
 
+/**
+ * @returns {{ kind: "all" } | { kind: "where", value: boolean } | { kind: "bad" }}
+ */
+function parseReviewedQueryParam(raw) {
+  if (raw === undefined) return { kind: "all" };
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  if (v === "" || v == null) return { kind: "all" };
+  if (typeof v === "boolean") {
+    return { kind: "where", value: v };
+  }
+  const s = String(v).trim().toLowerCase();
+  if (s === "true" || s === "1" || s === "yes") {
+    return { kind: "where", value: true };
+  }
+  if (s === "false" || s === "0" || s === "no") {
+    return { kind: "where", value: false };
+  }
+  return { kind: "bad" };
+}
+
 // GET /products -> list all synced products
-app.get("/products", async (req, res) => {
+// GET /products?reviewed=true|false
+app.get(["/products", "/products/"], async (req, res) => {
   try {
+    const filter = parseReviewedQueryParam(req.query.reviewed);
+    if (filter.kind === "bad") {
+      return res.status(400).json({
+        message: "Invalid review status.",
+        validValues: ["true", "false"],
+      });
+    }
+    if (filter.kind === "where") {
+      const { rows } = await pool.query(
+        "SELECT * FROM products WHERE reviewed = $1 ORDER BY id ASC",
+        [filter.value]
+      );
+      return res.status(200).json(rows);
+    }
     const { rows } = await pool.query(
       "SELECT * FROM products ORDER BY id ASC"
     );
