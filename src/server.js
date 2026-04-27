@@ -1,6 +1,18 @@
 import "dotenv/config";
 import express from "express";
+import { publishProductReview } from "./clients/kafka.js";
 import { createProductTable, pool } from "./db/db.js";
+
+/** @param {import("pg").QueryResultRow} row */
+function productRowSimplified(row) {
+  return {
+    id: String(row.id),
+    name: row.name ?? "",
+    price: row.price != null ? Number(row.price) : null,
+    value: row.value != null ? Number(row.value) : null,
+    inStock: row.in_stock,
+  };
+}
 
 const PORT = Number(process.env.PORT) || 3000;
 
@@ -100,10 +112,28 @@ app.post("/productreviewed/:id", async (req, res) => {
       });
     }
 
-    const productName = pending.rows[0].name || productId;
+    const row = pending.rows[0];
+    const productName = row.name || productId;
+    const simplified = productRowSimplified(row);
+    const reviewedAt = new Date().toISOString();
+
     await pool.query("UPDATE products SET reviewed = TRUE WHERE id = $1", [
       productId,
     ]);
+    try {
+      await publishProductReview(simplified, reviewedAt);
+    } catch (err) {
+      console.error("Kafka publish failed:", err);
+      await pool.query("UPDATE products SET reviewed = FALSE WHERE id = $1", [
+        productId,
+      ]);
+      return res.status(503).json({
+        message:
+          "Review was not published to the event bus; state was rolled back. Try again.",
+        error: err.message,
+      });
+    }
+
     return res.status(200).json({
       message: "Product marked as reviewed",
       product: { id: productId, name: productName },
