@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import { publishProductReview } from "./clients/kafka.js";
 import { createProductTable, pool } from "./db/db.js";
@@ -145,6 +146,8 @@ app.post("/productreviewed/:id", async (req, res) => {
 });
 
 
+export { app };
+
 async function main() {
   await createProductTable();
   app.listen(PORT, () => {
@@ -152,7 +155,10 @@ async function main() {
   });
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain && !process.env.VITEST) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
